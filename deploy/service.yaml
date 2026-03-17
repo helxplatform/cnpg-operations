@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cnpg-rest-server
+  namespace: default
+  labels:
+    app.kubernetes.io/name: cnpg-rest-server
+    app.kubernetes.io/component: server
+spec:
+  selector:
+    app.kubernetes.io/name: cnpg-rest-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  type: ClusterIP
+
+---
+# Optional: expose the Swagger UI and API externally via Ingress.
+# Uncomment and adjust host/tls to suit your cluster.
+#
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: cnpg-rest-server
+#   namespace: default
+#   annotations:
+#     nginx.ingress.kubernetes.io/rewrite-target: /
+# spec:
+#   rules:
+#     - host: cnpg-api.example.com
+#       http:
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: cnpg-rest-server
+#                 port:
+#                   name: http
+#   tls:
+#     - hosts:
+#         - cnpg-api.example.com
+#       secretName: cnpg-rest-server-tls

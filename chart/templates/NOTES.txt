@@ -1,0 +1,36 @@
+** RBAC **
+{{- if .Values.rbac.create }}
+RoleBindings created in namespace {{ .Release.Namespace }} for:
+{{- range .Values.rbac.clusterRoles }}
+  - {{ . }} (CNPG operator ClusterRole)
+{{- end }}
+  - {{ include "cnpg-operations.fullname" . }}-secrets (Secrets access)
+{{- else }}
+rbac.create is false. You must bind the following to service account
+  {{ include "cnpg-operations.serviceAccountName" . }} (namespace: {{ .Release.Namespace }})
+yourself:
+  - The CNPG operator's edit ClusterRole (e.g. cnpg-cloudnative-pg-edit)
+  - get/list/watch/create/update/patch/delete on core Secrets
+{{- end }}
+
+** Accessing the API **
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "cnpg-operations.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "cnpg-operations.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "cnpg-operations.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:8080
+  echo "API available at http://127.0.0.1:8080/api/v1"
+  echo "Swagger UI at   http://127.0.0.1:8080/swagger/index.html"
+{{- end }}
