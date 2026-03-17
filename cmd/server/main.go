@@ -18,6 +18,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -42,8 +43,20 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	logLevel := strings.ToLower(os.Getenv("LOG_LEVEL"))
+	if logLevel == "" {
+		logLevel = "info"
+	}
+
 	r := gin.New()
-	r.Use(gin.Logger(), gin.Recovery())
+	if logLevel == "debug" {
+		r.Use(gin.Logger())
+	} else {
+		r.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+			SkipPaths: []string{"/health", "/ready"},
+		}))
+	}
+	r.Use(gin.Recovery())
 
 	// Health / readiness
 	r.GET("/health", func(c *gin.Context) {
