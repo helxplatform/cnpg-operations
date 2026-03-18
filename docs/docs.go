@@ -846,7 +846,7 @@ const docTemplate = `{
                 },
                 "storage_class": {
                     "type": "string",
-                    "example": "fast-ssd"
+                    "example": ""
                 },
                 "storage_size": {
                     "type": "string",
