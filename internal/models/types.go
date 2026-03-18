@@ -4,7 +4,7 @@ package models
 
 // CreateClusterRequest is the request body for creating a new PostgreSQL cluster.
 type CreateClusterRequest struct {
-	Name            string `json:"name" binding:"required" example:"my-db"`
+	Name            string `json:"name" binding:"required" example:"my-cluster"`
 	Instances       int    `json:"instances" example:"3"`
 	StorageSize     string `json:"storage_size" example:"10Gi"`
 	PostgresVersion string `json:"postgres_version" example:"16"`
@@ -47,7 +47,7 @@ type UpdateRoleRequest struct {
 
 // CreateDatabaseRequest is the request body for creating a PostgreSQL database.
 type CreateDatabaseRequest struct {
-	DatabaseName  string `json:"database_name" binding:"required" example:"mydb"`
+	DatabaseName  string `json:"database_name" binding:"required" example:"my-db"`
 	Owner         string `json:"owner" binding:"required" example:"myuser"`
 	ReclaimPolicy string `json:"reclaim_policy,omitempty" example:"retain"`
 	DryRun        bool   `json:"dry_run,omitempty" example:"false"`
@@ -78,12 +78,12 @@ type DryRunResponse struct {
 
 // ClusterInfo holds information about a CloudNativePG cluster.
 type ClusterInfo struct {
-	Name            string        `json:"name" example:"my-db"`
+	Name            string        `json:"name" example:"my-cluster"`
 	Namespace       string        `json:"namespace" example:"default"`
 	Instances       int           `json:"instances" example:"3"`
 	ReadyInstances  int           `json:"ready_instances" example:"3"`
 	Phase           string        `json:"phase" example:"Cluster in healthy state"`
-	CurrentPrimary  string        `json:"current_primary" example:"my-db-1"`
+	CurrentPrimary  string        `json:"current_primary" example:"my-cluster-1"`
 	PostgresVersion string        `json:"postgres_version,omitempty" example:"ghcr.io/cloudnative-pg/postgresql:16"`
 	StorageSize     string        `json:"storage_size,omitempty" example:"10Gi"`
 	StorageClass    string        `json:"storage_class,omitempty" example:"standard"`
@@ -109,7 +109,7 @@ type ClusterResponse struct {
 type ClusterCreateResponse struct {
 	Success   bool   `json:"success" example:"true"`
 	Message   string `json:"message" example:"cluster created"`
-	Name      string `json:"name" example:"my-db"`
+	Name      string `json:"name" example:"my-cluster"`
 	Namespace string `json:"namespace" example:"default"`
 }
 
@@ -123,14 +123,14 @@ type RoleInfo struct {
 	CreateDB       bool     `json:"createdb" example:"false"`
 	CreateRole     bool     `json:"createrole" example:"false"`
 	Replication    bool     `json:"replication" example:"false"`
-	PasswordSecret string   `json:"password_secret" example:"cnpg-my-db-user-myuser"`
+	PasswordSecret string   `json:"password_secret" example:"cnpg-my-cluster-user-myuser"`
 	InRoles        []string `json:"in_roles,omitempty"`
 }
 
 // RolesListResponse is returned by the list roles endpoint.
 type RolesListResponse struct {
 	Success bool       `json:"success" example:"true"`
-	Cluster string     `json:"cluster" example:"default/my-db"`
+	Cluster string     `json:"cluster" example:"default/my-cluster"`
 	Roles   []RoleInfo `json:"roles"`
 	Count   int        `json:"count" example:"1"`
 }
@@ -144,8 +144,8 @@ type RoleResponse struct {
 
 // DatabaseInfo holds information about a managed PostgreSQL database.
 type DatabaseInfo struct {
-	CRDName       string `json:"crd_name" example:"my-db-mydb"`
-	DatabaseName  string `json:"database_name" example:"mydb"`
+	CRDName       string `json:"crd_name" example:"my-cluster-my-db"`
+	DatabaseName  string `json:"database_name" example:"my-db"`
 	Owner         string `json:"owner" example:"myuser"`
 	Ensure        string `json:"ensure" example:"present"`
 	ReclaimPolicy string `json:"reclaim_policy" example:"retain"`
@@ -154,7 +154,7 @@ type DatabaseInfo struct {
 // DatabasesListResponse is returned by the list databases endpoint.
 type DatabasesListResponse struct {
 	Success   bool           `json:"success" example:"true"`
-	Cluster   string         `json:"cluster" example:"default/my-db"`
+	Cluster   string         `json:"cluster" example:"default/my-cluster"`
 	Databases []DatabaseInfo `json:"databases"`
 	Count     int            `json:"count" example:"1"`
 }

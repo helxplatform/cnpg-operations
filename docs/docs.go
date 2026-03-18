@@ -725,7 +725,7 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string",
-                    "example": "my-db"
+                    "example": "my-cluster"
                 },
                 "namespace": {
                     "type": "string",
@@ -746,7 +746,7 @@ const docTemplate = `{
                 },
                 "current_primary": {
                     "type": "string",
-                    "example": "my-db-1"
+                    "example": "my-cluster-1"
                 },
                 "instances": {
                     "type": "integer",
@@ -754,7 +754,7 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string",
-                    "example": "my-db"
+                    "example": "my-cluster"
                 },
                 "namespace": {
                     "type": "string",
@@ -834,7 +834,7 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string",
-                    "example": "my-db"
+                    "example": "my-cluster"
                 },
                 "namespace": {
                     "type": "string",
@@ -871,7 +871,7 @@ const docTemplate = `{
             "properties": {
                 "database_name": {
                     "type": "string",
-                    "example": "mydb"
+                    "example": "my-db"
                 },
                 "dry_run": {
                     "type": "boolean",
@@ -932,11 +932,11 @@ const docTemplate = `{
             "properties": {
                 "crd_name": {
                     "type": "string",
-                    "example": "my-db-mydb"
+                    "example": "my-cluster-my-db"
                 },
                 "database_name": {
                     "type": "string",
-                    "example": "mydb"
+                    "example": "my-db"
                 },
                 "ensure": {
                     "type": "string",
@@ -972,7 +972,7 @@ const docTemplate = `{
             "properties": {
                 "cluster": {
                     "type": "string",
-                    "example": "default/my-db"
+                    "example": "default/my-cluster"
                 },
                 "count": {
                     "type": "integer",
@@ -1075,7 +1075,7 @@ const docTemplate = `{
                 },
                 "password_secret": {
                     "type": "string",
-                    "example": "cnpg-my-db-user-myuser"
+                    "example": "cnpg-my-cluster-user-myuser"
                 },
                 "replication": {
                     "type": "boolean",
@@ -1107,7 +1107,7 @@ const docTemplate = `{
             "properties": {
                 "cluster": {
                     "type": "string",
-                    "example": "default/my-db"
+                    "example": "default/my-cluster"
                 },
                 "count": {
                     "type": "integer",
