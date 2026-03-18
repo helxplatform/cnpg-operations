@@ -9,7 +9,7 @@ type CreateClusterRequest struct {
 	StorageSize     string `json:"storage_size" example:"10Gi"`
 	PostgresVersion string `json:"postgres_version" example:"16"`
 	StorageClass    string `json:"storage_class,omitempty" example:"fast-ssd"`
-	Namespace       string `json:"namespace,omitempty" example:"default"`
+	Namespace       string `json:"namespace,omitempty" example:""`
 	Wait            bool   `json:"wait,omitempty" example:"false"`
 	Timeout         *int   `json:"timeout,omitempty" example:"180"`
 	DryRun          bool   `json:"dry_run,omitempty" example:"false"`

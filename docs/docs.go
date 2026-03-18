@@ -838,7 +838,7 @@ const docTemplate = `{
                 },
                 "namespace": {
                     "type": "string",
-                    "example": "default"
+                    "example": ""
                 },
                 "postgres_version": {
                     "type": "string",
