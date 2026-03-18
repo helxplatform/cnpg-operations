@@ -52,11 +52,11 @@ func notFoundErr() error {
 func setupClusterRouter(m *MockKubeClient) *gin.Engine {
 	h := handlers.NewClusterHandler(m)
 	r := gin.New()
-	r.GET("/api/v1/clusters", h.ListClusters)
-	r.POST("/api/v1/clusters", h.CreateCluster)
-	r.GET("/api/v1/clusters/:namespace/:name", h.GetCluster)
-	r.PATCH("/api/v1/clusters/:namespace/:name/scale", h.ScaleCluster)
-	r.DELETE("/api/v1/clusters/:namespace/:name", h.DeleteCluster)
+	r.GET("/api/v1/cluster", h.ListClusters)
+	r.POST("/api/v1/cluster", h.CreateCluster)
+	r.GET("/api/v1/cluster/:name", h.GetCluster)
+	r.PATCH("/api/v1/cluster/:name/scale", h.ScaleCluster)
+	r.DELETE("/api/v1/cluster/:name", h.DeleteCluster)
 	return r
 }
 
@@ -64,12 +64,13 @@ func setupClusterRouter(m *MockKubeClient) *gin.Engine {
 
 func TestListClusters_Success(t *testing.T) {
 	m := &MockKubeClient{}
-	m.On("ListClusters", mock.Anything, "").
+	m.On("GetDefaultNamespace").Return("default")
+	m.On("ListClusters", mock.Anything, "default").
 		Return([]map[string]interface{}{fakeCluster("test-cluster", "default")}, nil)
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/clusters", nil))
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/cluster", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -88,7 +89,7 @@ func TestListClusters_WithNamespace(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/clusters?namespace=production", nil))
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/cluster?namespace=production", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	m.AssertExpectations(t)
@@ -96,12 +97,13 @@ func TestListClusters_WithNamespace(t *testing.T) {
 
 func TestListClusters_K8sError(t *testing.T) {
 	m := &MockKubeClient{}
-	m.On("ListClusters", mock.Anything, "").
+	m.On("GetDefaultNamespace").Return("default")
+	m.On("ListClusters", mock.Anything, "default").
 		Return(nil, k8serrors.NewForbidden(schema.GroupResource{}, "", nil))
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/clusters", nil))
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/cluster", nil))
 
 	assert.Equal(t, http.StatusForbidden, w.Code)
 
@@ -120,7 +122,7 @@ func TestGetCluster_Success(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/clusters/default/my-db", nil))
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/cluster/my-db?namespace=default", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -139,7 +141,7 @@ func TestGetCluster_NotFound(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/clusters/default/missing", nil))
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/cluster/missing?namespace=default", nil))
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	m.AssertExpectations(t)
@@ -163,7 +165,7 @@ func TestCreateCluster_Success(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -183,7 +185,7 @@ func TestCreateCluster_MissingName(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -198,7 +200,7 @@ func TestCreateCluster_InvalidName(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -213,7 +215,7 @@ func TestCreateCluster_DryRun(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -234,7 +236,7 @@ func TestCreateCluster_AlreadyExists(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -255,7 +257,7 @@ func TestScaleCluster_Success(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PATCH", "/api/v1/clusters/default/my-db/scale", bytes.NewReader(body))
+	req := httptest.NewRequest("PATCH", "/api/v1/cluster/my-db/scale?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -276,7 +278,7 @@ func TestScaleCluster_DryRun(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PATCH", "/api/v1/clusters/default/my-db/scale", bytes.NewReader(body))
+	req := httptest.NewRequest("PATCH", "/api/v1/cluster/my-db/scale?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -297,7 +299,7 @@ func TestDeleteCluster_RequiresConfirm(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/my-db", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db?namespace=default", nil))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
@@ -316,7 +318,7 @@ func TestDeleteCluster_DryRun(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/my-db?dry_run=true", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db?namespace=default&dry_run=true", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -335,7 +337,7 @@ func TestDeleteCluster_Confirmed(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/my-db?confirm=true", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db?namespace=default&confirm=true", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -353,7 +355,7 @@ func TestDeleteCluster_NotFound(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/missing?confirm=true", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/missing?namespace=default&confirm=true", nil))
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	m.AssertExpectations(t)

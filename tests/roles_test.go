@@ -45,10 +45,10 @@ func fakeRole(roleName string) map[string]interface{} {
 func setupRoleRouter(m *MockKubeClient) *gin.Engine {
 	h := handlers.NewRoleHandler(m)
 	r := gin.New()
-	r.GET("/api/v1/clusters/:namespace/:name/roles", h.ListRoles)
-	r.POST("/api/v1/clusters/:namespace/:name/roles", h.CreateRole)
-	r.PUT("/api/v1/clusters/:namespace/:name/roles/:role", h.UpdateRole)
-	r.DELETE("/api/v1/clusters/:namespace/:name/roles/:role", h.DeleteRole)
+	r.GET("/api/v1/cluster/:name/role", h.ListRoles)
+	r.POST("/api/v1/cluster/:name/role", h.CreateRole)
+	r.PUT("/api/v1/cluster/:name/role/:role", h.UpdateRole)
+	r.DELETE("/api/v1/cluster/:name/role/:role", h.DeleteRole)
 	return r
 }
 
@@ -61,7 +61,7 @@ func TestListRoles_Success(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/clusters/default/my-db/roles", nil))
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/cluster/my-db/role?namespace=default", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -79,7 +79,7 @@ func TestListRoles_EmptyCluster(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/clusters/default/my-db/roles", nil))
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/cluster/my-db/role?namespace=default", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -95,7 +95,7 @@ func TestListRoles_ClusterNotFound(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/clusters/default/missing/roles", nil))
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/cluster/missing/role?namespace=default", nil))
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	m.AssertExpectations(t)
@@ -117,7 +117,7 @@ func TestCreateRole_Success(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/roles", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/role?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -139,7 +139,7 @@ func TestCreateRole_AlreadyExists(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/roles", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/role?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -155,7 +155,7 @@ func TestCreateRole_InvalidName(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/roles", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/role?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -170,7 +170,7 @@ func TestCreateRole_DryRun(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/roles", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/role?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -195,7 +195,7 @@ func TestUpdateRole_Success(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/api/v1/clusters/default/my-db/roles/appuser", bytes.NewReader(body))
+	req := httptest.NewRequest("PUT", "/api/v1/cluster/my-db/role/appuser?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -215,7 +215,7 @@ func TestUpdateRole_NotFound(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/api/v1/clusters/default/my-db/roles/missing", bytes.NewReader(body))
+	req := httptest.NewRequest("PUT", "/api/v1/cluster/my-db/role/missing?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -235,7 +235,7 @@ func TestUpdateRole_WithPassword(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/api/v1/clusters/default/my-db/roles/appuser", bytes.NewReader(body))
+	req := httptest.NewRequest("PUT", "/api/v1/cluster/my-db/role/appuser?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -254,7 +254,7 @@ func TestDeleteRole_Success(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/my-db/roles/appuser", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db/role/appuser?namespace=default", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -272,7 +272,7 @@ func TestDeleteRole_DryRun(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/my-db/roles/appuser?dry_run=true", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db/role/appuser?namespace=default&dry_run=true", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -288,7 +288,7 @@ func TestDeleteRole_NotFound(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/my-db/roles/nonexistent", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db/role/nonexistent?namespace=default", nil))
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	m.AssertExpectations(t)
@@ -301,7 +301,7 @@ func TestDeleteRole_ClusterNotFound(t *testing.T) {
 
 	r := setupRoleRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/no-cluster/roles/appuser", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/no-cluster/role/appuser?namespace=default", nil))
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	m.AssertExpectations(t)

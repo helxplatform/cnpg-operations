@@ -43,9 +43,9 @@ func fakeDatabase(clusterName, dbName string) map[string]interface{} {
 func setupDatabaseRouter(m *MockKubeClient) *gin.Engine {
 	h := handlers.NewDatabaseHandler(m)
 	r := gin.New()
-	r.GET("/api/v1/clusters/:namespace/:name/databases", h.ListDatabases)
-	r.POST("/api/v1/clusters/:namespace/:name/databases", h.CreateDatabase)
-	r.DELETE("/api/v1/clusters/:namespace/:name/databases/:database", h.DeleteDatabase)
+	r.GET("/api/v1/cluster/:name/database", h.ListDatabases)
+	r.POST("/api/v1/cluster/:name/database", h.CreateDatabase)
+	r.DELETE("/api/v1/cluster/:name/database/:database", h.DeleteDatabase)
 	return r
 }
 
@@ -58,7 +58,7 @@ func TestListDatabases_Success(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/clusters/default/my-db/databases", nil))
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/cluster/my-db/database?namespace=default", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -78,7 +78,7 @@ func TestListDatabases_Empty(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/clusters/default/my-db/databases", nil))
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/cluster/my-db/database?namespace=default", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -102,7 +102,7 @@ func TestCreateDatabase_Success(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/databases", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/database?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -128,7 +128,7 @@ func TestCreateDatabase_DefaultReclaimPolicy(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/databases", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/database?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -142,6 +142,7 @@ func TestCreateDatabase_DefaultReclaimPolicy(t *testing.T) {
 
 func TestCreateDatabase_InvalidReclaimPolicy(t *testing.T) {
 	m := &MockKubeClient{}
+	m.On("GetDefaultNamespace").Return("default")
 
 	body, _ := json.Marshal(models.CreateDatabaseRequest{
 		DatabaseName:  "myapp",
@@ -151,7 +152,7 @@ func TestCreateDatabase_InvalidReclaimPolicy(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/databases", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/database", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -165,7 +166,7 @@ func TestCreateDatabase_MissingRequired(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/databases", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/database?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -174,6 +175,7 @@ func TestCreateDatabase_MissingRequired(t *testing.T) {
 
 func TestCreateDatabase_InvalidName(t *testing.T) {
 	m := &MockKubeClient{}
+	m.On("GetDefaultNamespace").Return("default")
 
 	body, _ := json.Marshal(models.CreateDatabaseRequest{
 		DatabaseName: "INVALID_NAME",
@@ -182,7 +184,7 @@ func TestCreateDatabase_InvalidName(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/databases", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/database", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -191,6 +193,7 @@ func TestCreateDatabase_InvalidName(t *testing.T) {
 
 func TestCreateDatabase_DryRun(t *testing.T) {
 	m := &MockKubeClient{}
+	m.On("GetDefaultNamespace").Return("default")
 
 	body, _ := json.Marshal(models.CreateDatabaseRequest{
 		DatabaseName: "myapp",
@@ -200,7 +203,7 @@ func TestCreateDatabase_DryRun(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/databases", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/database", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -223,7 +226,7 @@ func TestCreateDatabase_AlreadyExists(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/api/v1/clusters/default/my-db/databases", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/database?namespace=default", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -241,7 +244,7 @@ func TestDeleteDatabase_RetainPolicy(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/my-db/databases/myapp", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db/database/myapp?namespace=default", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -262,7 +265,7 @@ func TestDeleteDatabase_DeletePolicy(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/my-db/databases/myapp", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db/database/myapp?namespace=default", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -279,7 +282,7 @@ func TestDeleteDatabase_DryRun(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/my-db/databases/myapp?dry_run=true", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db/database/myapp?namespace=default&dry_run=true", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -296,7 +299,7 @@ func TestDeleteDatabase_NotFound(t *testing.T) {
 
 	r := setupDatabaseRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/clusters/default/my-db/databases/missing", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db/database/missing?namespace=default", nil))
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	m.AssertExpectations(t)

@@ -2,10 +2,15 @@
 {{- $fullname := include "cnpg-operations.fullname" . -}}
 {{- $labels := include "cnpg-operations.labels" . -}}
 {{- $saName := include "cnpg-operations.serviceAccountName" . -}}
+{{- $clusterWide := .Values.rbac.clusterWide -}}
 {{- range $cr := .Values.rbac.clusterRoles }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+{{- if $clusterWide }}
+kind: ClusterRoleBinding
+{{- else }}
 kind: RoleBinding
+{{- end }}
 metadata:
   name: {{ $fullname }}-{{ $cr | replace "." "-" }}
   labels:

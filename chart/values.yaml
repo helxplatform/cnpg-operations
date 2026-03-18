@@ -22,12 +22,15 @@ serviceAccount:
   name: ""
 
 rbac:
-  # Create RoleBindings in the release namespace.
+  # Create bindings for CNPG operator ClusterRoles.
   create: true
+  # When true, create ClusterRoleBindings (cross-namespace access, requires admin).
+  # When false (default), create namespace-scoped RoleBindings.
+  clusterWide: false
   # Pre-existing ClusterRoles (installed by the CNPG operator) to bind.
-  # Helm-based operator installs: "<release>-cloudnative-pg-edit"
-  # Kustomize-based installs: "cluster-editor-role", "database-editor-role"
+  # Helm-based operator installs: "<release>-cloudnative-pg", "<release>-cloudnative-pg-edit"
   clusterRoles:
+    - cnpg-cloudnative-pg
     - cnpg-cloudnative-pg-edit
 
 podAnnotations: {}
@@ -46,7 +49,7 @@ securityContext:
 
 service:
   type: ClusterIP
-  port: 80
+  port: 8080
 
 ingress:
   enabled: false

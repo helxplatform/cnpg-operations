@@ -41,14 +41,14 @@ func databaseInfoFromMap(obj map[string]interface{}) models.DatabaseInfo {
 // @Description  List all Database CRDs managed for a CloudNativePG cluster
 // @Tags         databases
 // @Produce      json
-// @Param        namespace  path  string  true  "Kubernetes namespace"
-// @Param        name       path  string  true  "Cluster name"
+// @Param        name       path   string  true   "Cluster name"
+// @Param        namespace  query  string  false  "Kubernetes namespace (defaults to server namespace)"
 // @Success      200  {object}  models.DatabasesListResponse
 // @Failure      404  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters/{namespace}/{name}/databases [get]
+// @Router       /cluster/{name}/database [get]
 func (h *DatabaseHandler) ListDatabases(c *gin.Context) {
-	namespace := c.Param("namespace")
+	namespace := resolveNamespace(c, h.client)
 	clusterName := c.Param("name")
 
 	dbs, err := h.client.ListDatabases(c.Request.Context(), namespace, clusterName)
@@ -76,17 +76,17 @@ func (h *DatabaseHandler) ListDatabases(c *gin.Context) {
 // @Tags         databases
 // @Accept       json
 // @Produce      json
-// @Param        namespace  path  string                    true  "Kubernetes namespace"
-// @Param        name       path  string                    true  "Cluster name"
-// @Param        request    body  models.CreateDatabaseRequest  true  "Database configuration"
+// @Param        name       path   string                        true   "Cluster name"
+// @Param        namespace  query  string                        false  "Kubernetes namespace (defaults to server namespace)"
+// @Param        request    body   models.CreateDatabaseRequest  true   "Database configuration"
 // @Success      201  {object}  models.DatabaseResponse
 // @Success      200  {object}  models.DryRunResponse  "dry_run=true"
 // @Failure      400  {object}  models.ErrorResponse
 // @Failure      409  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters/{namespace}/{name}/databases [post]
+// @Router       /cluster/{name}/database [post]
 func (h *DatabaseHandler) CreateDatabase(c *gin.Context) {
-	namespace := c.Param("namespace")
+	namespace := resolveNamespace(c, h.client)
 	clusterName := c.Param("name")
 
 	var req models.CreateDatabaseRequest
@@ -150,16 +150,16 @@ func (h *DatabaseHandler) CreateDatabase(c *gin.Context) {
 // @Description  Delete the Database CRD for a cluster. Whether the actual database is dropped depends on its reclaimPolicy.
 // @Tags         databases
 // @Produce      json
-// @Param        namespace  path   string  true   "Kubernetes namespace"
 // @Param        name       path   string  true   "Cluster name"
 // @Param        database   path   string  true   "Database name"
+// @Param        namespace  query  string  false  "Kubernetes namespace (defaults to server namespace)"
 // @Param        dry_run    query  bool    false  "Preview deletion without executing"
 // @Success      200  {object}  models.MessageResponse
 // @Failure      404  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters/{namespace}/{name}/databases/{database} [delete]
+// @Router       /cluster/{name}/database/{database} [delete]
 func (h *DatabaseHandler) DeleteDatabase(c *gin.Context) {
-	namespace := c.Param("namespace")
+	namespace := resolveNamespace(c, h.client)
 	clusterName := c.Param("name")
 	databaseName := c.Param("database")
 	dryRun := c.Query("dry_run") == "true"

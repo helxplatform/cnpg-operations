@@ -10,13 +10,13 @@
 // @license.name    Apache 2.0
 // @license.url     https://www.apache.org/licenses/LICENSE-2.0
 //
-// @host            localhost:8080
 // @BasePath        /api/v1
 // @schemes         http https
 package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
@@ -67,27 +67,30 @@ func main() {
 	})
 
 	// Swagger UI
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/docs", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/docs/index.html")
+	})
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	v1 := r.Group("/api/v1")
 	{
 		// Cluster management
-		v1.GET("/clusters", clusterH.ListClusters)
-		v1.POST("/clusters", clusterH.CreateCluster)
-		v1.GET("/clusters/:namespace/:name", clusterH.GetCluster)
-		v1.PATCH("/clusters/:namespace/:name/scale", clusterH.ScaleCluster)
-		v1.DELETE("/clusters/:namespace/:name", clusterH.DeleteCluster)
+		v1.GET("/cluster", clusterH.ListClusters)
+		v1.POST("/cluster", clusterH.CreateCluster)
+		v1.GET("/cluster/:name", clusterH.GetCluster)
+		v1.PATCH("/cluster/:name/scale", clusterH.ScaleCluster)
+		v1.DELETE("/cluster/:name", clusterH.DeleteCluster)
 
 		// Role management
-		v1.GET("/clusters/:namespace/:name/roles", roleH.ListRoles)
-		v1.POST("/clusters/:namespace/:name/roles", roleH.CreateRole)
-		v1.PUT("/clusters/:namespace/:name/roles/:role", roleH.UpdateRole)
-		v1.DELETE("/clusters/:namespace/:name/roles/:role", roleH.DeleteRole)
+		v1.GET("/cluster/:name/role", roleH.ListRoles)
+		v1.POST("/cluster/:name/role", roleH.CreateRole)
+		v1.PUT("/cluster/:name/role/:role", roleH.UpdateRole)
+		v1.DELETE("/cluster/:name/role/:role", roleH.DeleteRole)
 
 		// Database management
-		v1.GET("/clusters/:namespace/:name/databases", dbH.ListDatabases)
-		v1.POST("/clusters/:namespace/:name/databases", dbH.CreateDatabase)
-		v1.DELETE("/clusters/:namespace/:name/databases/:database", dbH.DeleteDatabase)
+		v1.GET("/cluster/:name/database", dbH.ListDatabases)
+		v1.POST("/cluster/:name/database", dbH.CreateDatabase)
+		v1.DELETE("/cluster/:name/database/:database", dbH.DeleteDatabase)
 	}
 
 	port := os.Getenv("PORT")
@@ -95,7 +98,7 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("CNPG REST server listening on :%s  swagger: http://localhost:%s/swagger/index.html", port, port)
+	log.Printf("CNPG REST server listening on :%s  swagger: http://localhost:%s/docs/index.html", port, port)
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("server error: %v", err)
 	}

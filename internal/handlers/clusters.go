@@ -44,15 +44,15 @@ func clusterInfoFromMap(obj map[string]interface{}) models.ClusterInfo {
 
 // ListClusters godoc
 // @Summary      List PostgreSQL clusters
-// @Description  List all CloudNativePG clusters, optionally filtered by namespace
+// @Description  List all CloudNativePG clusters in the given namespace (defaults to server namespace)
 // @Tags         clusters
 // @Produce      json
-// @Param        namespace  query  string  false  "Kubernetes namespace (omit for all namespaces)"
+// @Param        namespace  query  string  false  "Kubernetes namespace (defaults to server namespace)"
 // @Success      200  {object}  models.ClustersListResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters [get]
+// @Router       /cluster [get]
 func (h *ClusterHandler) ListClusters(c *gin.Context) {
-	namespace := c.Query("namespace")
+	namespace := resolveNamespace(c, h.client)
 
 	clusters, err := h.client.ListClusters(c.Request.Context(), namespace)
 	if err != nil {
@@ -65,16 +65,11 @@ func (h *ClusterHandler) ListClusters(c *gin.Context) {
 		infos[i] = clusterInfoFromMap(cl)
 	}
 
-	scope := "all namespaces"
-	if namespace != "" {
-		scope = fmt.Sprintf("namespace %q", namespace)
-	}
-
 	c.JSON(http.StatusOK, models.ClustersListResponse{
 		Success:  true,
 		Clusters: infos,
 		Count:    len(infos),
-		Scope:    scope,
+		Scope:    fmt.Sprintf("namespace %q", namespace),
 	})
 }
 
@@ -83,14 +78,14 @@ func (h *ClusterHandler) ListClusters(c *gin.Context) {
 // @Description  Get detailed status for a specific CloudNativePG cluster
 // @Tags         clusters
 // @Produce      json
-// @Param        namespace  path  string  true  "Kubernetes namespace"
-// @Param        name       path  string  true  "Cluster name"
+// @Param        name       path   string  true   "Cluster name"
+// @Param        namespace  query  string  false  "Kubernetes namespace (defaults to server namespace)"
 // @Success      200  {object}  models.ClusterResponse
 // @Failure      404  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters/{namespace}/{name} [get]
+// @Router       /cluster/{name} [get]
 func (h *ClusterHandler) GetCluster(c *gin.Context) {
-	namespace := c.Param("namespace")
+	namespace := resolveNamespace(c, h.client)
 	name := c.Param("name")
 
 	obj, err := h.client.GetCluster(c.Request.Context(), namespace, name)
@@ -117,7 +112,7 @@ func (h *ClusterHandler) GetCluster(c *gin.Context) {
 // @Failure      400  {object}  models.ErrorResponse
 // @Failure      409  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters [post]
+// @Router       /cluster [post]
 func (h *ClusterHandler) CreateCluster(c *gin.Context) {
 	var req models.CreateClusterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -164,7 +159,7 @@ func (h *ClusterHandler) CreateCluster(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, models.ClusterCreateResponse{
 		Success:   true,
-		Message:   fmt.Sprintf("cluster %q created; monitor with GET /api/v1/clusters/%s/%s", req.Name, req.Namespace, req.Name),
+		Message:   fmt.Sprintf("cluster %q created; monitor with GET /api/v1/cluster/%s?namespace=%s", req.Name, req.Name, req.Namespace),
 		Name:      nestedStr(result, "metadata", "name"),
 		Namespace: nestedStr(result, "metadata", "namespace"),
 	})
@@ -176,16 +171,16 @@ func (h *ClusterHandler) CreateCluster(c *gin.Context) {
 // @Tags         clusters
 // @Accept       json
 // @Produce      json
-// @Param        namespace  path  string                    true  "Kubernetes namespace"
-// @Param        name       path  string                    true  "Cluster name"
-// @Param        request    body  models.ScaleClusterRequest  true  "Scale configuration"
+// @Param        name       path   string                      true   "Cluster name"
+// @Param        namespace  query  string                      false  "Kubernetes namespace (defaults to server namespace)"
+// @Param        request    body   models.ScaleClusterRequest  true   "Scale configuration"
 // @Success      200  {object}  models.MessageResponse
 // @Failure      400  {object}  models.ErrorResponse
 // @Failure      404  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters/{namespace}/{name}/scale [patch]
+// @Router       /cluster/{name}/scale [patch]
 func (h *ClusterHandler) ScaleCluster(c *gin.Context) {
-	namespace := c.Param("namespace")
+	namespace := resolveNamespace(c, h.client)
 	name := c.Param("name")
 
 	var req models.ScaleClusterRequest
@@ -226,7 +221,7 @@ func (h *ClusterHandler) ScaleCluster(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.MessageResponse{
 		Success: true,
-		Message: fmt.Sprintf("cluster %q/%q scaling %d → %d; monitor with GET /api/v1/clusters/%s/%s", namespace, name, currentInstances, req.Instances, namespace, name),
+		Message: fmt.Sprintf("cluster %q/%q scaling %d → %d; monitor with GET /api/v1/cluster/%s?namespace=%s", namespace, name, currentInstances, req.Instances, name, namespace),
 	})
 }
 
@@ -235,17 +230,17 @@ func (h *ClusterHandler) ScaleCluster(c *gin.Context) {
 // @Description  Permanently delete a CloudNativePG cluster and its associated role secrets. Requires confirm=true.
 // @Tags         clusters
 // @Produce      json
-// @Param        namespace  path   string  true   "Kubernetes namespace"
 // @Param        name       path   string  true   "Cluster name"
+// @Param        namespace  query  string  false  "Kubernetes namespace (defaults to server namespace)"
 // @Param        confirm    query  bool    false  "Must be true to confirm destructive deletion"
 // @Param        dry_run    query  bool    false  "Preview deletion without executing"
 // @Success      200  {object}  models.MessageResponse
 // @Failure      400  {object}  models.ErrorResponse
 // @Failure      404  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters/{namespace}/{name} [delete]
+// @Router       /cluster/{name} [delete]
 func (h *ClusterHandler) DeleteCluster(c *gin.Context) {
-	namespace := c.Param("namespace")
+	namespace := resolveNamespace(c, h.client)
 	name := c.Param("name")
 	confirm := c.Query("confirm") == "true"
 	dryRun := c.Query("dry_run") == "true"

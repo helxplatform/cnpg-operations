@@ -6,8 +6,18 @@ import (
 	"github.com/gin-gonic/gin"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/cnpg-operations/cnpg-rest-server/internal/k8s"
 	"github.com/cnpg-operations/cnpg-rest-server/internal/models"
 )
+
+// resolveNamespace returns the namespace query parameter, falling back to the
+// client's default namespace (i.e. the namespace the server is running in).
+func resolveNamespace(c *gin.Context, client k8s.KubeClient) string {
+	if ns := c.Query("namespace"); ns != "" {
+		return ns
+	}
+	return client.GetDefaultNamespace()
+}
 
 // respondError writes a JSON error response.
 func respondError(c *gin.Context, status int, err error) {

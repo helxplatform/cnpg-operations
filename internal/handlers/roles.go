@@ -57,14 +57,14 @@ func roleInfoFromMap(role map[string]interface{}) models.RoleInfo {
 // @Description  List all roles managed in a CloudNativePG cluster via spec.managed.roles
 // @Tags         roles
 // @Produce      json
-// @Param        namespace  path  string  true  "Kubernetes namespace"
-// @Param        name       path  string  true  "Cluster name"
+// @Param        name       path   string  true   "Cluster name"
+// @Param        namespace  query  string  false  "Kubernetes namespace (defaults to server namespace)"
 // @Success      200  {object}  models.RolesListResponse
 // @Failure      404  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters/{namespace}/{name}/roles [get]
+// @Router       /cluster/{name}/role [get]
 func (h *RoleHandler) ListRoles(c *gin.Context) {
-	namespace := c.Param("namespace")
+	namespace := resolveNamespace(c, h.client)
 	clusterName := c.Param("name")
 
 	obj, err := h.client.GetCluster(c.Request.Context(), namespace, clusterName)
@@ -95,18 +95,18 @@ func (h *RoleHandler) ListRoles(c *gin.Context) {
 // @Tags         roles
 // @Accept       json
 // @Produce      json
-// @Param        namespace  path  string                  true  "Kubernetes namespace"
-// @Param        name       path  string                  true  "Cluster name"
-// @Param        request    body  models.CreateRoleRequest  true  "Role configuration"
+// @Param        name       path   string                    true   "Cluster name"
+// @Param        namespace  query  string                    false  "Kubernetes namespace (defaults to server namespace)"
+// @Param        request    body   models.CreateRoleRequest  true   "Role configuration"
 // @Success      201  {object}  models.RoleResponse
 // @Success      200  {object}  models.DryRunResponse  "dry_run=true"
 // @Failure      400  {object}  models.ErrorResponse
 // @Failure      404  {object}  models.ErrorResponse
 // @Failure      409  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters/{namespace}/{name}/roles [post]
+// @Router       /cluster/{name}/role [post]
 func (h *RoleHandler) CreateRole(c *gin.Context) {
-	namespace := c.Param("namespace")
+	namespace := resolveNamespace(c, h.client)
 	clusterName := c.Param("name")
 
 	var req models.CreateRoleRequest
@@ -208,17 +208,17 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 // @Tags         roles
 // @Accept       json
 // @Produce      json
-// @Param        namespace  path  string                  true  "Kubernetes namespace"
-// @Param        name       path  string                  true  "Cluster name"
-// @Param        role       path  string                  true  "Role name"
-// @Param        request    body  models.UpdateRoleRequest  true  "Role update (all fields optional)"
+// @Param        name       path   string                    true   "Cluster name"
+// @Param        role       path   string                    true   "Role name"
+// @Param        namespace  query  string                    false  "Kubernetes namespace (defaults to server namespace)"
+// @Param        request    body   models.UpdateRoleRequest  true   "Role update (all fields optional)"
 // @Success      200  {object}  models.RoleResponse
 // @Failure      400  {object}  models.ErrorResponse
 // @Failure      404  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters/{namespace}/{name}/roles/{role} [put]
+// @Router       /cluster/{name}/role/{role} [put]
 func (h *RoleHandler) UpdateRole(c *gin.Context) {
-	namespace := c.Param("namespace")
+	namespace := resolveNamespace(c, h.client)
 	clusterName := c.Param("name")
 	roleName := c.Param("role")
 
@@ -313,16 +313,16 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 // @Description  Remove a role from a CloudNativePG cluster and delete its associated Kubernetes secret
 // @Tags         roles
 // @Produce      json
-// @Param        namespace  path   string  true   "Kubernetes namespace"
 // @Param        name       path   string  true   "Cluster name"
 // @Param        role       path   string  true   "Role name"
+// @Param        namespace  query  string  false  "Kubernetes namespace (defaults to server namespace)"
 // @Param        dry_run    query  bool    false  "Preview deletion without executing"
 // @Success      200  {object}  models.MessageResponse
 // @Failure      404  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
-// @Router       /clusters/{namespace}/{name}/roles/{role} [delete]
+// @Router       /cluster/{name}/role/{role} [delete]
 func (h *RoleHandler) DeleteRole(c *gin.Context) {
-	namespace := c.Param("namespace")
+	namespace := resolveNamespace(c, h.client)
 	clusterName := c.Param("name")
 	roleName := c.Param("role")
 	dryRun := c.Query("dry_run") == "true"
