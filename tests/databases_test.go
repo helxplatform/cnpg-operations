@@ -40,6 +40,29 @@ func fakeDatabase(clusterName, dbName string) map[string]interface{} {
 	}
 }
 
+// fakeClusterWithRole returns a cluster that already has the given role in spec.managed.roles.
+func fakeClusterWithRole(clusterName, namespace, roleName string) map[string]interface{} {
+	cl := fakeCluster(clusterName, namespace)
+	cl["spec"].(map[string]interface{})["managed"] = map[string]interface{}{
+		"roles": []interface{}{
+			map[string]interface{}{
+				"name":   roleName,
+				"ensure": "present",
+				"login":  true,
+				"passwordSecret": map[string]interface{}{
+					"name": "cnpg-" + clusterName + "-user-" + roleName,
+				},
+			},
+		},
+	}
+	return cl
+}
+
+// fakeClusterNoRoles returns a cluster with no managed roles.
+func fakeClusterNoRoles(clusterName, namespace string) map[string]interface{} {
+	return fakeCluster(clusterName, namespace)
+}
+
 func setupDatabaseRouter(m *MockKubeClient) *gin.Engine {
 	h := handlers.NewDatabaseHandler(m)
 	r := gin.New()
@@ -92,6 +115,9 @@ func TestListDatabases_Empty(t *testing.T) {
 
 func TestCreateDatabase_Success(t *testing.T) {
 	m := &MockKubeClient{}
+	// ensureOwnerRole: owner already exists in cluster
+	m.On("GetCluster", mock.Anything, "default", "my-db").
+		Return(fakeClusterWithRole("my-db", "default", "appuser"), nil)
 	m.On("CreateDatabase", mock.Anything, "default", mock.Anything).Return(nil)
 
 	body, _ := json.Marshal(models.CreateDatabaseRequest{
@@ -114,11 +140,48 @@ func TestCreateDatabase_Success(t *testing.T) {
 	assert.Equal(t, "myapp", resp.Database.DatabaseName)
 	assert.Equal(t, "my-db-myapp", resp.Database.CRDName)
 	assert.Equal(t, "retain", resp.Database.ReclaimPolicy)
+	assert.NotContains(t, resp.Message, "auto-created")
+	m.AssertExpectations(t)
+}
+
+func TestCreateDatabase_AutoCreateOwnerRole(t *testing.T) {
+	m := &MockKubeClient{}
+	// ensureOwnerRole: owner does NOT exist, must be auto-created
+	m.On("GetCluster", mock.Anything, "default", "my-db").
+		Return(fakeClusterNoRoles("my-db", "default"), nil)
+	m.On("CreateSecret", mock.Anything, "default", "cnpg-my-db-user-appuser", "appuser", mock.AnythingOfType("string"), mock.Anything).
+		Return(nil)
+	m.On("UpdateCluster", mock.Anything, "default", "my-db", mock.Anything).
+		Return(fakeClusterWithRole("my-db", "default", "appuser"), nil)
+	m.On("CreateDatabase", mock.Anything, "default", mock.Anything).Return(nil)
+
+	body, _ := json.Marshal(models.CreateDatabaseRequest{
+		DatabaseName:  "myapp",
+		Owner:         "appuser",
+		ReclaimPolicy: "retain",
+	})
+
+	r := setupDatabaseRouter(m)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/v1/cluster/my-db/database?namespace=default", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var resp models.DatabaseResponse
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.True(t, resp.Success)
+	assert.Contains(t, resp.Message, "auto-created")
+	assert.Contains(t, resp.Message, "cnpg-my-db-user-appuser")
 	m.AssertExpectations(t)
 }
 
 func TestCreateDatabase_DefaultReclaimPolicy(t *testing.T) {
 	m := &MockKubeClient{}
+	// ensureOwnerRole: owner already exists
+	m.On("GetCluster", mock.Anything, "default", "my-db").
+		Return(fakeClusterWithRole("my-db", "default", "appuser"), nil)
 	m.On("CreateDatabase", mock.Anything, "default", mock.Anything).Return(nil)
 
 	body, _ := json.Marshal(models.CreateDatabaseRequest{
@@ -216,6 +279,9 @@ func TestCreateDatabase_DryRun(t *testing.T) {
 
 func TestCreateDatabase_AlreadyExists(t *testing.T) {
 	m := &MockKubeClient{}
+	// ensureOwnerRole: owner already exists
+	m.On("GetCluster", mock.Anything, "default", "my-db").
+		Return(fakeClusterWithRole("my-db", "default", "appuser"), nil)
 	m.On("CreateDatabase", mock.Anything, "default", mock.Anything).
 		Return(k8serrors.NewAlreadyExists(schema.GroupResource{}, "my-db-myapp"))
 

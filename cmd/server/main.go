@@ -67,10 +67,15 @@ func main() {
 	})
 
 	// Swagger UI
-	r.GET("/docs", func(c *gin.Context) {
-		c.Redirect(http.StatusMovedPermanently, "/docs/index.html")
+	swaggerHandler := ginSwagger.WrapHandler(swaggerFiles.Handler)
+	r.GET("/docs/*any", func(c *gin.Context) {
+		any := c.Param("any")
+		if any == "" || any == "/" {
+			c.Redirect(http.StatusMovedPermanently, "/docs/index.html")
+			return
+		}
+		swaggerHandler(c)
 	})
-	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	v1 := r.Group("/api/v1")
 	{

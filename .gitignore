@@ -2,3 +2,5 @@ config.json
 coverage.html
 coverage.out
 import/
+docs/swagger.yaml
+docs/swagger.json

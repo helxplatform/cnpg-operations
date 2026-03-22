@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -44,6 +46,71 @@ func k8sStatus(err error) int {
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+// ensureOwnerRole checks whether the named role exists in the cluster's
+// spec.managed.roles.  If it does not, it creates a password secret and
+// appends the role (login-enabled) to the cluster spec.
+// Returns (secretName, created, error).
+func ensureOwnerRole(ctx context.Context, client k8s.KubeClient, namespace, clusterName, roleName string) (string, bool, error) {
+	obj, err := client.GetCluster(ctx, namespace, clusterName)
+	if err != nil {
+		return "", false, err
+	}
+
+	rawRoles := nestedSlice(obj, "spec", "managed", "roles")
+	for _, r := range rawRoles {
+		if roleMap, ok := r.(map[string]interface{}); ok {
+			if nestedStr(roleMap, "name") == roleName {
+				secretName := nestedStr(roleMap, "passwordSecret", "name")
+				return secretName, false, nil
+			}
+		}
+	}
+
+	// Role does not exist — create it
+	secretName := roleSecretName(clusterName, roleName)
+	if err := k8s.ValidateRFC1123(secretName, "Role secret"); err != nil {
+		return "", false, err
+	}
+
+	password, err := k8s.GeneratePassword(16)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to generate password: %w", err)
+	}
+
+	if err := client.CreateSecret(ctx, namespace, secretName, roleName, password, map[string]string{
+		"app.kubernetes.io/name": "cnpg",
+		"cnpg.io/cluster":        clusterName,
+		"cnpg.io/role":           roleName,
+	}); err != nil {
+		return "", false, fmt.Errorf("failed to create password secret: %w", err)
+	}
+
+	newRole := map[string]interface{}{
+		"name":        roleName,
+		"ensure":      "present",
+		"login":       true,
+		"superuser":   false,
+		"inherit":     true,
+		"createdb":    false,
+		"createrole":  false,
+		"replication": false,
+		"passwordSecret": map[string]interface{}{
+			"name": secretName,
+		},
+	}
+
+	obj = ensureManagedRoles(obj)
+	obj["spec"].(map[string]interface{})["managed"].(map[string]interface{})["roles"] = append(rawRoles, newRole)
+
+	if _, err := client.UpdateCluster(ctx, namespace, clusterName, obj); err != nil {
+		// Best-effort cleanup
+		_ = client.DeleteSecret(ctx, namespace, secretName)
+		return "", false, err
+	}
+
+	return secretName, true, nil
 }
 
 // nestedStr is a nil-safe helper that extracts a string from a nested map.

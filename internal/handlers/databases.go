@@ -120,8 +120,15 @@ func (h *DatabaseHandler) CreateDatabase(c *gin.Context) {
 			Success: true,
 			DryRun:  true,
 			Message: fmt.Sprintf("dry run: database %q would be created in cluster %q/%q", req.DatabaseName, namespace, clusterName),
-			Preview: fmt.Sprintf("crd_name=%s, owner=%s, reclaim_policy=%s", crdName, req.Owner, reclaimPolicy),
+			Preview: fmt.Sprintf("crd_name=%s, owner=%s, reclaim_policy=%s; owner role will be auto-created if missing", crdName, req.Owner, reclaimPolicy),
 		})
+		return
+	}
+
+	// Ensure the owner role exists (auto-create with login + password if not)
+	secretName, roleCreated, err := ensureOwnerRole(c.Request.Context(), h.client, namespace, clusterName, req.Owner)
+	if err != nil {
+		respondError(c, k8sStatus(err), fmt.Errorf("failed to ensure owner role %q: %w", req.Owner, err))
 		return
 	}
 
@@ -130,6 +137,11 @@ func (h *DatabaseHandler) CreateDatabase(c *gin.Context) {
 	if err := h.client.CreateDatabase(c.Request.Context(), namespace, spec); err != nil {
 		respondError(c, k8sStatus(err), err)
 		return
+	}
+
+	msg := fmt.Sprintf("Database CRD %q created; CloudNativePG operator will reconcile the database", crdName)
+	if roleCreated {
+		msg += fmt.Sprintf("; owner role %q auto-created with password in secret %q", req.Owner, secretName)
 	}
 
 	c.JSON(http.StatusCreated, models.DatabaseResponse{
@@ -141,7 +153,7 @@ func (h *DatabaseHandler) CreateDatabase(c *gin.Context) {
 			Ensure:        "present",
 			ReclaimPolicy: reclaimPolicy,
 		},
-		Message: fmt.Sprintf("Database CRD %q created; CloudNativePG operator will reconcile the database", crdName),
+		Message: msg,
 	})
 }
 
