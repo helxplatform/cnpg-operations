@@ -229,22 +229,19 @@ func (h *ClusterHandler) ScaleCluster(c *gin.Context) {
 
 // DeleteCluster godoc
 // @Summary      Delete a PostgreSQL cluster
-// @Description  Permanently delete a CloudNativePG cluster and its associated role secrets. Requires confirm=true.
+// @Description  Permanently delete a CloudNativePG cluster and its associated role secrets. Use dry_run=true to preview.
 // @Tags         clusters
 // @Produce      json
 // @Param        name       path   string  true   "Cluster name"
 // @Param        namespace  query  string  false  "Kubernetes namespace (defaults to server namespace)"
-// @Param        confirm    query  bool    false  "Must be true to confirm destructive deletion"
 // @Param        dry_run    query  bool    false  "Preview deletion without executing"
 // @Success      200  {object}  models.MessageResponse
-// @Failure      400  {object}  models.ErrorResponse
 // @Failure      404  {object}  models.ErrorResponse
 // @Failure      500  {object}  models.ErrorResponse
 // @Router       /cluster/{name} [delete]
 func (h *ClusterHandler) DeleteCluster(c *gin.Context) {
 	namespace := resolveNamespace(c, h.client)
 	name := c.Param("name")
-	confirm := c.Query("confirm") == "true"
 	dryRun := c.Query("dry_run") == "true"
 
 	// Verify cluster exists before proceeding
@@ -279,17 +276,9 @@ func (h *ClusterHandler) DeleteCluster(c *gin.Context) {
 		c.JSON(http.StatusOK, models.DryRunResponse{
 			Success: true,
 			DryRun:  true,
-			Message: fmt.Sprintf("dry run: %d operation(s) would be performed; re-run with confirm=true&dry_run=false to execute", len(ops)),
+			Message: fmt.Sprintf("dry run: %d operation(s) would be performed; re-run without dry_run to execute", len(ops)),
 			Preview: ops,
 		})
-		return
-	}
-
-	if !confirm {
-		respondError(c, http.StatusBadRequest, fmt.Errorf(
-			"deletion of cluster %q/%q requires ?confirm=true — this is irreversible and all data will be lost",
-			namespace, name,
-		))
 		return
 	}
 

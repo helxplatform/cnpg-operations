@@ -158,7 +158,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Permanently delete a CloudNativePG cluster and its associated role secrets. Requires confirm=true.",
+                "description": "Permanently delete a CloudNativePG cluster and its associated role secrets. Use dry_run=true to preview.",
                 "produces": [
                     "application/json"
                 ],
@@ -182,12 +182,6 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Must be true to confirm destructive deletion",
-                        "name": "confirm",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
                         "description": "Preview deletion without executing",
                         "name": "dry_run",
                         "in": "query"
@@ -198,12 +192,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_cnpg-operations_cnpg-rest-server_internal_models.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cnpg-operations_cnpg-rest-server_internal_models.ErrorResponse"
                         }
                     },
                     "404": {

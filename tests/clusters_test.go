@@ -292,23 +292,6 @@ func TestScaleCluster_DryRun(t *testing.T) {
 
 // ===== DeleteCluster =====
 
-func TestDeleteCluster_RequiresConfirm(t *testing.T) {
-	m := &MockKubeClient{}
-	m.On("GetCluster", mock.Anything, "default", "my-db").
-		Return(fakeCluster("my-db", "default"), nil)
-
-	r := setupClusterRouter(m)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db?namespace=default", nil))
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-
-	var resp models.ErrorResponse
-	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Contains(t, resp.Error, "confirm=true")
-	m.AssertExpectations(t)
-}
-
 func TestDeleteCluster_DryRun(t *testing.T) {
 	m := &MockKubeClient{}
 	m.On("GetCluster", mock.Anything, "default", "my-db").
@@ -332,7 +315,7 @@ func TestDeleteCluster_DryRun(t *testing.T) {
 	m.AssertExpectations(t)
 }
 
-func TestDeleteCluster_Confirmed(t *testing.T) {
+func TestDeleteCluster_Success(t *testing.T) {
 	m := &MockKubeClient{}
 	m.On("GetCluster", mock.Anything, "default", "my-db").
 		Return(fakeCluster("my-db", "default"), nil)
@@ -341,7 +324,7 @@ func TestDeleteCluster_Confirmed(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db?namespace=default&confirm=true", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/my-db?namespace=default", nil))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -359,7 +342,7 @@ func TestDeleteCluster_NotFound(t *testing.T) {
 
 	r := setupClusterRouter(m)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/missing?namespace=default&confirm=true", nil))
+	r.ServeHTTP(w, httptest.NewRequest("DELETE", "/api/v1/cluster/missing?namespace=default", nil))
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	m.AssertExpectations(t)
