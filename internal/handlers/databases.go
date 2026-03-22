@@ -120,7 +120,10 @@ func (h *DatabaseHandler) CreateDatabase(c *gin.Context) {
 			Success: true,
 			DryRun:  true,
 			Message: fmt.Sprintf("dry run: database %q would be created in cluster %q/%q", req.DatabaseName, namespace, clusterName),
-			Preview: fmt.Sprintf("crd_name=%s, owner=%s, reclaim_policy=%s; owner role will be auto-created if missing", crdName, req.Owner, reclaimPolicy),
+			Preview: []string{
+				fmt.Sprintf("CREATE Database CRD %q (database %q, owner %q, reclaim_policy=%s)", crdName, req.DatabaseName, req.Owner, reclaimPolicy),
+				"AUTO-CREATE owner role if missing (with login + password secret)",
+			},
 		})
 		return
 	}
@@ -197,7 +200,9 @@ func (h *DatabaseHandler) DeleteDatabase(c *gin.Context) {
 			Success: true,
 			DryRun:  true,
 			Message: fmt.Sprintf("dry run: Database CRD %q would be deleted; database %q will be %s", crdName, databaseName, action),
-			Preview: fmt.Sprintf("owner=%s, reclaim_policy=%s", owner, reclaimPolicy),
+			Preview: []string{
+				fmt.Sprintf("DELETE Database CRD %q (owner=%s, reclaim_policy=%s)", crdName, owner, reclaimPolicy),
+			},
 		})
 		return
 	}

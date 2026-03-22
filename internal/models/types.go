@@ -70,10 +70,10 @@ type MessageResponse struct {
 
 // DryRunResponse is returned when dry_run=true.
 type DryRunResponse struct {
-	Success bool   `json:"success" example:"true"`
-	DryRun  bool   `json:"dry_run" example:"true"`
-	Message string `json:"message" example:"dry run completed"`
-	Preview string `json:"preview,omitempty"`
+	Success bool     `json:"success" example:"true"`
+	DryRun  bool     `json:"dry_run" example:"true"`
+	Message string   `json:"message" example:"dry run completed"`
+	Preview []string `json:"preview,omitempty"`
 }
 
 // ClusterInfo holds information about a CloudNativePG cluster.

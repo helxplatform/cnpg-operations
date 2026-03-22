@@ -148,8 +148,11 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 			Success: true,
 			DryRun:  true,
 			Message: fmt.Sprintf("dry run: role %q would be created in cluster %q/%q", req.RoleName, namespace, clusterName),
-			Preview: fmt.Sprintf("secret=%s, login=%v, superuser=%v, createdb=%v, createrole=%v, replication=%v",
-				secretName, req.Login, req.Superuser, req.CreateDB, req.CreateRole, req.Replication),
+			Preview: []string{
+				fmt.Sprintf("CREATE Role %q in cluster %q/%q (login=%v, superuser=%v, createdb=%v, createrole=%v, replication=%v)",
+					req.RoleName, namespace, clusterName, req.Login, req.Superuser, req.CreateDB, req.CreateRole, req.Replication),
+				fmt.Sprintf("CREATE Secret %q (auto-generated password)", secretName),
+			},
 		})
 		return
 	}
@@ -357,7 +360,10 @@ func (h *RoleHandler) DeleteRole(c *gin.Context) {
 			Success: true,
 			DryRun:  true,
 			Message: fmt.Sprintf("dry run: role %q would be deleted from cluster %q/%q", roleName, namespace, clusterName),
-			Preview: fmt.Sprintf("secret %q exists=%v; re-run with dry_run=false to execute", secretName, secretExists),
+			Preview: []string{
+				fmt.Sprintf("DELETE Role %q from cluster spec", roleName),
+				fmt.Sprintf("DELETE Secret %q (exists=%v)", secretName, secretExists),
+			},
 		})
 		return
 	}
@@ -398,32 +404,32 @@ func ensureManagedRoles(obj map[string]interface{}) map[string]interface{} {
 	return obj
 }
 
-// collectRoleChanges builds a human-readable preview string for dry-run updates.
-func collectRoleChanges(roleMap map[string]interface{}, req models.UpdateRoleRequest) string {
-	changes := ""
+// collectRoleChanges builds a list of human-readable changes for dry-run updates.
+func collectRoleChanges(roleMap map[string]interface{}, req models.UpdateRoleRequest) []string {
+	var changes []string
 	if req.Login != nil {
-		changes += fmt.Sprintf("login: %v → %v; ", nestedBool(roleMap, "login"), *req.Login)
+		changes = append(changes, fmt.Sprintf("login: %v → %v", nestedBool(roleMap, "login"), *req.Login))
 	}
 	if req.Superuser != nil {
-		changes += fmt.Sprintf("superuser: %v → %v; ", nestedBool(roleMap, "superuser"), *req.Superuser)
+		changes = append(changes, fmt.Sprintf("superuser: %v → %v", nestedBool(roleMap, "superuser"), *req.Superuser))
 	}
 	if req.Inherit != nil {
-		changes += fmt.Sprintf("inherit: %v → %v; ", nestedBool(roleMap, "inherit"), *req.Inherit)
+		changes = append(changes, fmt.Sprintf("inherit: %v → %v", nestedBool(roleMap, "inherit"), *req.Inherit))
 	}
 	if req.CreateDB != nil {
-		changes += fmt.Sprintf("createdb: %v → %v; ", nestedBool(roleMap, "createdb"), *req.CreateDB)
+		changes = append(changes, fmt.Sprintf("createdb: %v → %v", nestedBool(roleMap, "createdb"), *req.CreateDB))
 	}
 	if req.CreateRole != nil {
-		changes += fmt.Sprintf("createrole: %v → %v; ", nestedBool(roleMap, "createrole"), *req.CreateRole)
+		changes = append(changes, fmt.Sprintf("createrole: %v → %v", nestedBool(roleMap, "createrole"), *req.CreateRole))
 	}
 	if req.Replication != nil {
-		changes += fmt.Sprintf("replication: %v → %v; ", nestedBool(roleMap, "replication"), *req.Replication)
+		changes = append(changes, fmt.Sprintf("replication: %v → %v", nestedBool(roleMap, "replication"), *req.Replication))
 	}
 	if req.Password != nil {
-		changes += "password: <updated>; "
+		changes = append(changes, "password: <updated>")
 	}
-	if changes == "" {
-		changes = "no changes specified"
+	if len(changes) == 0 {
+		changes = []string{"no changes specified"}
 	}
 	return changes
 }

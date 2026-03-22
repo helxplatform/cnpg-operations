@@ -1002,7 +1002,10 @@ const docTemplate = `{
                     "example": "dry run completed"
                 },
                 "preview": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "success": {
                     "type": "boolean",

@@ -313,6 +313,8 @@ func TestDeleteCluster_DryRun(t *testing.T) {
 	m := &MockKubeClient{}
 	m.On("GetCluster", mock.Anything, "default", "my-db").
 		Return(fakeCluster("my-db", "default"), nil)
+	m.On("ListDatabases", mock.Anything, "default", "my-db").
+		Return([]map[string]interface{}{}, nil)
 	m.On("ListSecretsByLabel", mock.Anything, "default", "cnpg.io/cluster=my-db").
 		Return(nil, nil)
 
@@ -325,6 +327,8 @@ func TestDeleteCluster_DryRun(t *testing.T) {
 	var resp models.DryRunResponse
 	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.True(t, resp.DryRun)
+	assert.NotEmpty(t, resp.Preview)
+	assert.Contains(t, resp.Preview[0], "DELETE Cluster")
 	m.AssertExpectations(t)
 }
 

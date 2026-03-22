@@ -146,7 +146,9 @@ func (h *ClusterHandler) CreateCluster(c *gin.Context) {
 			Success: true,
 			DryRun:  true,
 			Message: fmt.Sprintf("dry run: cluster %q in namespace %q would be created", req.Name, req.Namespace),
-			Preview: fmt.Sprintf("instances=%d, postgres=%s, storage=%s", req.Instances, req.PostgresVersion, req.StorageSize),
+			Preview: []string{
+				fmt.Sprintf("CREATE Cluster %q in namespace %q (instances=%d, postgres=%s, storage=%s)", req.Name, req.Namespace, req.Instances, req.PostgresVersion, req.StorageSize),
+			},
 		})
 		return
 	}
@@ -253,14 +255,32 @@ func (h *ClusterHandler) DeleteCluster(c *gin.Context) {
 	}
 
 	if dryRun {
-		secrets, _ := h.client.ListSecretsByLabel(c.Request.Context(), namespace, fmt.Sprintf("cnpg.io/cluster=%s", name))
+		ctx := c.Request.Context()
 		instances := nestedInt(obj, "spec", "instances")
 		storageSize := nestedStr(obj, "spec", "storage", "size")
+
+		// Enumerate operations that would occur
+		ops := []string{
+			fmt.Sprintf("DELETE Cluster %s/%s (%d instance(s), %s storage each)", namespace, name, instances, storageSize),
+		}
+
+		// List database CRDs — all databases are destroyed with the cluster
+		dbs, _ := h.client.ListDatabases(ctx, namespace, name)
+		for _, db := range dbs {
+			ops = append(ops, fmt.Sprintf("DELETE Database CRD %q (database %q destroyed with cluster)", nestedStr(db, "metadata", "name"), nestedStr(db, "spec", "name")))
+		}
+
+		// List associated secrets
+		secrets, _ := h.client.ListSecretsByLabel(ctx, namespace, fmt.Sprintf("cnpg.io/cluster=%s", name))
+		for _, s := range secrets {
+			ops = append(ops, fmt.Sprintf("DELETE Secret %q", s.Name))
+		}
+
 		c.JSON(http.StatusOK, models.DryRunResponse{
 			Success: true,
 			DryRun:  true,
-			Message: fmt.Sprintf("dry run: cluster %q/%q would be deleted along with %d secret(s)", namespace, name, len(secrets)),
-			Preview: fmt.Sprintf("instances=%d, storage=%s per instance; re-run with confirm=true&dry_run=false to execute", instances, storageSize),
+			Message: fmt.Sprintf("dry run: %d operation(s) would be performed; re-run with confirm=true&dry_run=false to execute", len(ops)),
+			Preview: ops,
 		})
 		return
 	}
