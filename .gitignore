@@ -4,3 +4,4 @@ coverage.out
 import/
 docs/swagger.yaml
 docs/swagger.json
+bin/cnpg-rest-server
